@@ -1215,7 +1215,7 @@ async function envoyerSupport(event) {
     };
 
     try {
-        const response = await fetch('https://hook.eu2.make.com/uy9n7x7ofwqexjba1xmk8tughxpgavdd', {
+        const response = await fetch("https://hook.eu2.make.com/uy9n7x7ofwqexjba1xmk8tughxpgavdd", {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify(chargeUtile)
