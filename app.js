@@ -571,7 +571,7 @@ function traiterInscription(event) {
       return;
   }
   
-  const emailRegex = /^[^\\s@]+@[^\\s@]+\\.[^\\s@]+$/;
+  const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
   if (!emailRegex.test(email)) {
       alert("Veuillez entrer une adresse e-mail valide.");
       return;
@@ -601,7 +601,7 @@ function traiterLogin(event) {
   const errorDiv = document.getElementById('login-error');
   if(errorDiv) errorDiv.style.display = 'none';
 
-  const email = document.getElementById('email').value;
+  const email = document.getElementById('email').value.trim();
   const password = document.getElementById('password').value;
   
   const authResult = authentifierUtilisateur(email, password);
@@ -976,8 +976,8 @@ function afficherResultats() {
   console.log("Clé 'gains_possibles':", EtatApp.analyseGenerale.gains_possibles);
   console.log("Clé 'synthese':", EtatApp.analyseGenerale.synthese);
 
-  // Déclencher l'envoi webhook
-  envoyerVersWebhook();
+  // Déclencher l'envoi webhook (Désactivé pour éviter les doublons - se fait au clic sur 'Recevoir par mail')
+  // envoyerVersWebhook();
 
   const htmlContenu = `
       ${getHeaderBar()}
