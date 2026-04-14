@@ -379,7 +379,10 @@ function getHeaderBar() {
       const nomAffichage = p.charAt(0).toUpperCase() + p.slice(1);
       
       return `
-          <div class="user-header-container">
+          <div class="user-header-container" style="display: flex; justify-content: space-between; align-items: center; width: 100%;">
+              <div class="app-branding" style="display: flex; align-items: center; gap: 0.75rem;">
+                  <img src="print_profit_system_logo-blanc-or.png" alt="Logo PPS" style="height: 40px; width: auto; object-fit: contain;">
+              </div>
               <div class="user-profile-btn" onclick="toggleDropdown(event)">
                   <div class="user-avatar">${initial}</div>
                   <div class="user-name">${nomAffichage}</div>
@@ -444,7 +447,10 @@ function afficherLogin() {
                   <input type="email" id="email" class="form-control" placeholder="votre@email.com" required>
               </div>
               <div class="form-group" style="margin-bottom: 2rem;">
-                  <label for="password">Mot de passe</label>
+                  <label for="password" style="display: flex; justify-content: space-between;">
+                      Mot de passe 
+                      <a href="#" onclick="afficherMotDePasseOublie(event)" style="color: var(--gold); text-decoration: none; font-size: 0.85rem;">Mot de passe oublié ?</a>
+                  </label>
                   <input type="password" id="password" class="form-control" placeholder="••••••••" required>
               </div>
               <button type="submit" class="btn" style="width: 100%; margin-bottom: 1rem;">Se connecter</button>
@@ -490,12 +496,86 @@ function afficherInscription() {
   `;
 }
 
+function afficherMotDePasseOublie(event) {
+  if (event) event.preventDefault();
+  conteneurApplication.innerHTML = `
+      <div class="glass-panel login-panel ${EtatApp.directionAnimation}">
+          ${genererLogoSVG()}
+          <h2 style="color: var(--text-main); margin-bottom: 0.5rem; text-align: center;">Mot de passe oublié</h2>
+          <p class="subtitle" style="margin-bottom: 2rem;">Entrez votre adresse e-mail pour réinitialiser votre mot de passe</p>
+          
+          <form onsubmit="traiterVerificationEmailMDP(event)">
+              <div class="form-group" style="margin-bottom: 2rem;">
+                  <label for="reset-email">Adresse e-mail</label>
+                  <input type="email" id="reset-email" class="form-control" placeholder="votre@email.com" required>
+              </div>
+              <button type="submit" class="btn" style="width: 100%; margin-bottom: 1rem;">Vérifier</button>
+              <div style="font-size: 0.95rem; color: var(--text-muted); text-align: center;">
+                  <a href="#" onclick="allerALogin(event)" style="color: var(--gold); text-decoration: none;">Retour à la connexion</a>
+              </div>
+          </form>
+      </div>
+  `;
+}
+
+function traiterVerificationEmailMDP(event) {
+  event.preventDefault();
+  const email = document.getElementById('reset-email').value.trim();
+  const users = obtenirUtilisateurs();
+  if (users[email]) {
+      afficherNouveauMotDePasse(email);
+  } else {
+      alert("Cette adresse e-mail n'est pas reconnue.");
+  }
+}
+
+function afficherNouveauMotDePasse(email) {
+  conteneurApplication.innerHTML = `
+      <div class="glass-panel login-panel animate-next">
+          ${genererLogoSVG()}
+          <h2 style="color: var(--text-main); margin-bottom: 0.5rem; text-align: center;">Nouveau mot de passe</h2>
+          <p class="subtitle" style="margin-bottom: 2rem;">Pour le compte : ${email}</p>
+          
+          <form onsubmit="traiterNouveauMotDePasse(event, '${email}')">
+              <div class="form-group" style="margin-bottom: 2rem;">
+                  <label for="new-password">Nouveau mot de passe</label>
+                  <input type="password" id="new-password" class="form-control" placeholder="••••••••" required minlength="6">
+              </div>
+              <button type="submit" class="btn" style="width: 100%; margin-bottom: 1rem;">Mettre à jour & Se connecter</button>
+          </form>
+      </div>
+  `;
+}
+
+function traiterNouveauMotDePasse(event, email) {
+  event.preventDefault();
+  const newPassword = document.getElementById('new-password').value;
+  const users = obtenirUtilisateurs();
+  if (users[email]) {
+      users[email].password = newPassword;
+      localStorage.setItem('printProfitUsers', JSON.stringify(users));
+      alert("Mot de passe mis à jour avec succès !");
+      allerALogin(null);
+  }
+}
+
 function traiterInscription(event) {
   event.preventDefault();
-  const email = document.getElementById('reg-email').value;
-  const prenom = document.getElementById('reg-prenom').value;
-  const entreprise = document.getElementById('reg-name').value;
+  const email = document.getElementById('reg-email').value.trim();
+  const prenom = document.getElementById('reg-prenom').value.trim();
+  const entreprise = document.getElementById('reg-name').value.trim();
   const password = document.getElementById('reg-password').value;
+  
+  if (!email || !prenom || !entreprise || !password) {
+      alert("Veuillez remplir tous les champs obligatoires.");
+      return;
+  }
+  
+  const emailRegex = /^[^\\s@]+@[^\\s@]+\\.[^\\s@]+$/;
+  if (!emailRegex.test(email)) {
+      alert("Veuillez entrer une adresse e-mail valide.");
+      return;
+  }
   
   // Enregistrement sécurisé
   enregistrerUtilisateur(email, prenom, entreprise, password);
@@ -504,6 +584,9 @@ function traiterInscription(event) {
   EtatApp.utilisateurPrenom = prenom;
   EtatApp.utilisateurEntreprise = entreprise;
   sauvegarderSession(email, prenom, entreprise);
+  
+  // Déclencher le webhook pour envoyer l'email de confirmation
+  envoyerVersWebhook('registration');
   
   transitionVers(() => {
       EtatApp.indiceQuestionActuelle = -1;
@@ -555,7 +638,6 @@ function afficherEveil() {
   conteneurApplication.innerHTML = `
       ${getHeaderBar()}
       <div class="glass-panel ${EtatApp.directionAnimation}" style="text-align: center;">
-          ${genererLogoSVG()}
           <h2 style="color: var(--gold-light); margin-bottom: 0.5rem;">Bienvenue${pName},</h2>
           <p class="subtitle" style="margin-bottom: 2rem;">Prêt(e) à évaluer la rentabilité, l'organisation et la performance de votre production d'impression ?</p>
           <button class="btn" onclick="demarrerAudit()">Démarrer l'Audit ✨</button>
@@ -777,17 +859,23 @@ async function afficherTraitement() {
   afficherResultats();
 }
 
-function envoyerVersWebhook() {
+function envoyerVersWebhook(actionType = 'audit_results') {
   const chargeUtile = {
+      action: actionType,
       prenom: EtatApp.utilisateurPrenom,
       email: EtatApp.utilisateur,
       entreprise: EtatApp.utilisateurEntreprise || "Non renseigné",
-      scoreObtenu: EtatApp.scoreTotal,
-      constat: EtatApp.analyseGenerale?.constat || "",
-      risque: EtatApp.analyseGenerale?.risque || "",
-      solution: EtatApp.analyseGenerale?.solution || "",
       horodatage: new Date().toISOString()
   };
+  
+  if (actionType !== 'registration') {
+      chargeUtile.scoreObtenu = EtatApp.scoreTotal;
+      chargeUtile.constat = EtatApp.analyseGenerale?.constat || "";
+      chargeUtile.risque = EtatApp.analyseGenerale?.risque || "";
+      chargeUtile.solution = EtatApp.analyseGenerale?.solution || "";
+      chargeUtile.gains_possibles = EtatApp.analyseGenerale?.gains_possibles || "+ 0% de marge";
+      chargeUtile.synthese = EtatApp.analyseGenerale?.synthese || "";
+  }
   
   console.log("== Données prêtes pour le Webhook ==", chargeUtile);
   
@@ -807,78 +895,96 @@ function envoyerVersWebhook() {
 
 function afficherResultats() {
   const score = EtatApp.scoreTotal;
-  const scoreMaximal = 20 * 4;
-  
-  // 1. Logique d'Analyse (Intelligence de l'Audit)
-  const scoresCats = EtatApp.scoresParCategorie; 
-  let maxCat = scoresCats[0];
-  let minCat = scoresCats[0];
-  
-  scoresCats.forEach(c => {
-      if(c.score > maxCat.score) maxCat = c;
-      if(c.score < minCat.score) minCat = c;
-  });
-
-  const percentScore = score / scoreMaximal;
-  let gainPercent = "5% à 10%";
-  if(percentScore < 0.4) gainPercent = "20% à 35%";
-  else if(percentScore < 0.7) gainPercent = "10% à 20%";
-
-  // --- NOUVELLE LOGIQUE D'ANALYSE IA EXPERTE CONSOLIDÉE ---
   const entrepriseText = EtatApp.utilisateurEntreprise || "votre structure";
+  // 1. Logique d'Analyse (Intelligence de l'Audit)
+  const scoreMaximal = 20 * 4;
+  const percentScore = score / scoreMaximal;
+  const cats = EtatApp.scoresParCategorie; 
+  let minCat = cats.reduce((prev, curr) => (prev.score < curr.score) ? prev : curr);
+  let maxCat = cats.reduce((prev, curr) => (prev.score > curr.score) ? prev : curr);
 
-  // Résumé gratuit (UI) : Synthétique et pédagogique
-  let texteInterpretation = `Votre principal maillon faible se situe indéniablement sur la section "<strong>${minCat.label}</strong>". 
-  
-  <strong>Conseil :</strong> Concentrez prioritairement vos efforts pour limiter vos pertes quotidiennes liées à cette étape. En optimisant d'abord ces processus, vous pourriez rapidement assainir une part significative de votre marge brute.`;
-
-  // Diagnostic Détaillé (Webhook) : Consultant Senior, analyse croisée & psychologique
-  const constatDetail = `L'analyse multidimensionnelle des opérations au sein de ${entrepriseText} révèle une asymétrie marquée dans votre organisation. Bien que l'axe "${maxCat.label}" présente les bases les plus stables, votre chaîne de valeur souffre d'un goulot d'étranglement sévère sur la partie "${minCat.label}". Cette faille n'est pas qu'un problème purement technique ; elle met en lumière une cause racine organisationnelle et managériale profonde : vos équipes compensent par un effort humain massif ce qui devrait être dicté par des standards établis de manière chirurgicale. L'absence de référentiel strict sur ce pôle fait que chaque imprévu se transforme en anomalie, entravant la fluidité globale de la production et banalisant une "culture du rattrapage". C'est l'illustration type du bricolage empirique qui structure actuellement la limite de la croissance de ${entrepriseText}.`;
-
-  // Modulateur de risque financier
-  let risqueDetail = "";
-  if (percentScore < 0.4) {
-      risqueDetail = `L'impact financier global de ces dysfonctionnements est critique. Le coût caché de la non-qualité et la forte inertie opérationnelle concentrée sur la zone "${minCat.label}" grignotent silencieusement ${gainPercent} de votre marge nette prévisionnelle. Poursuivre avec un tel modèle revient à accepter l'érosion incontrôlable de la trésorerie et fragilise drastiquement la viabilité de l'entreprise face au marché.`;
-  } else if (percentScore < 0.7) {
-      risqueDetail = `Sur le plan financier, la négligence de cette zone "${minCat.label}" représente un véritable "impôt fantôme". La volatilité des pratiques vous fait laisser quotidiennement sur la table environ ${gainPercent} de rentabilité gâchée par le manque d'optimisation centralisée. Cette fuite silencieuse affaiblit mécaniquement la résilience de l'entreprise.`;
-  } else {
-      risqueDetail = `Même si les fondamentaux sont solides, la persistance de micro-frictions sur l'axe "${minCat.label}" bloque la maximisation de votre rentabilité finale. Ne pas standardiser ces derniers leviers induit une érosion de marge subtile (environ ${gainPercent}), qui sépare pourtant le bon atelier de production, de l'entreprise ultra-rentable et véritablement scalable.`;
-  }
-
-  // Solution sur les pires réponses
-  const piresReponses = toutesLesQuestions
+  // Récupérer les 3 pires réponses pour l'ancrage réel
+  const piresPoints = toutesLesQuestions
       .filter(q => q.type === 'question' && typeof EtatApp.reponsesUtilisateur[q.identifiant] !== 'undefined')
-      .map(q => ({
-          texteQuestion: q.texte,
-          score: parseInt(EtatApp.reponsesUtilisateur[q.identifiant])
-      }))
-      .sort((a, b) => a.score - b.score)
+      .map(q => {
+          const val = EtatApp.reponsesUtilisateur[q.identifiant];
+          const questionOriginale = toutesLesQuestions.find(tq => tq.identifiant === q.identifiant);
+          const optionTexte = questionOriginale.options.find(o => o.valeur === val)?.texte || "votre réponse";
+          return { id: q.identifiant, texte: q.texte, valeur: val, reponseDonnee: optionTexte, cat: q.titreEtape };
+      })
+      .sort((a, b) => a.valeur - b.valeur)
       .slice(0, 3);
-      
-  let etapesSolution = "";
-  if (piresReponses.length >= 3) {
-      etapesSolution = `\n1. Résolution Opérationnelle immédiate ciblée sur le constat : "${piresReponses[0].texteQuestion}". Formalisez de suite un standard de travail (SOP) pour éliminer toute variabilité interprétative sur ce poste.\n2. Traitement du Point de Friction lié à la problématique : "${piresReponses[1].texteQuestion}". Instaurez un point journalier flash (5 minutes) pour auditer les dérives immédiates sur cette question avant de lancer la production.\n3. Restructuration & Responsabilité autour de l'enjeu : "${piresReponses[2].texteQuestion}". Affectez un relais de l'équipe pour rédiger une grille stricte, forçant ainsi l'application mécanique plutôt que le "bon sens".`;
-  } else {
-      etapesSolution = `\n1. Cartographie d'urgence : Initiez un audit visuel VSM (Value Stream Mapping) braqué exclusivement sur l'axe "${minCat.label}".\n2. Standardisation immédiate : Implémentez des checklists visuelles (détrompage) aux postes critiques concernés dans l'atelier.\n3. Pilotage de marge : Surveillez un KPI spécifique rattaché à ce frein durant les 30 prochains jours.`;
+
+  // --- GÉNÉRATEUR D'ANALYSE MULTI-TONALITÉ (SENIOR STRATEGY) ---
+  const calculGainPercent = 5 + (12 - 5) * (1 - (Math.max(20, Math.min(80, score)) - 20) / 60);
+  const gainPercentAffiche = calculGainPercent.toFixed(0); // Pas de virgule pour un look plus "chiffre rond" d'expert
+  const gainsPossiblesLabel = `+ ${gainPercentAffiche}% de marge`;
+  
+  const tons = ['DIRECTIF', 'VISIONNAIRE', 'ANALYSTE', 'MENTOR'];
+  const tonChoisi = tons[Math.floor(Math.random() * tons.length)];
+  
+  let constatDetail = "";
+  let risqueDetail = "";
+  let solutionDetail = "";
+  let texteInterpretation = "";
+
+  const q1 = piresPoints[0];
+  const q2 = piresPoints[1];
+  const q3 = piresPoints[2];
+
+  switch(tonChoisi) {
+      case 'DIRECTIF':
+          constatDetail = `Il y a de l'argent qui dort chez ${entrepriseText}. Précisément sur "${q1.texte}", vous indiquez "${q1.reponseDonnee}". En redressant chirurgicalement cet axe "${minCat.label}", vous ne faites pas que réparer un processus : vous débloquez un flux de profitabilité immédiat. Ce n'est pas une option, c'est votre priorité absolue pour l'exercice en cours.`;
+          risqueDetail = `L'inaction vous coûte votre place sur le podium. En ne captant pas ces ${gainPercentAffiche}% de marge supplémentaire, vous laissez la concurrence s'armer à votre place. La fragilité de "${q2.texte}" n'est pas une fatalité, c'est un manque de courage organisationnel qui bride votre capacité d'autofinancement et de réinvestissement.`;
+          solutionDetail = `Reprenez les commandes. 1. Standardisation brutale de "${q1.texte}" pour arrêter l'hémorragie. 2. Pilotage de performance sur "${q2.texte}" avec des objectifs de gain chiffrés. 3. Verrouillage de la marge sur "${q3.texte}". Chaque point de pourcentage récupéré est une victoire nette pour votre trésorerie.`;
+          texteInterpretation = `Levier d'accélération : <strong>${gainsPossiblesLabel}</strong>. Votre axe <strong>${minCat.label}</strong> est le pivot de cette rentabilité cachée.`;
+          break;
+          
+      case 'VISIONNAIRE':
+          constatDetail = `Votre vision pour ${entrepriseText} mérite un moteur à la hauteur de vos ambitions. Le goulot identifié sur "${minCat.label}", notamment avec votre réponse "${q1.reponseDonnee}" sur "${q1.texte}", est la seule barrière entre votre état actuel et une structure de classe mondiale. Ce gain de marge n'est pas qu'un chiffre, c'est votre futur carburant de croissance.`;
+          risqueDetail = `Le monde de l'impression change, et ceux qui ne captent pas ces ${gainPercentAffiche}% de rentabilité interne seront exclus de la course à l'innovation. En ignorant le levier sur "${q2.texte}", vous bridez votre scalabilité. Vous avez le choix entre rester un artisan performant ou devenir le leader industriel qui dicte les règles du marché.`;
+          solutionDetail = `Ouvrez de nouveaux horizons. 1. Automatisez la rigueur sur "${q1.texte}" pour passer à l'échelle supérieure. 2. Repensez "${q2.texte}" comme un avantage compétitif majeur. 3. Sanctifiez votre marge sur "${q3.texte}". C'est en dominant vos flux internes que vous dominerez votre marché.`;
+          texteInterpretation = `Ambition stratégique : <strong>${gainsPossiblesLabel}</strong>. En débloquant <strong>${minCat.label}</strong>, vous changez radicalement d'échelle opérationnelle.`;
+          break;
+
+      case 'ANALYSTE':
+          constatDetail = `L'analyse des ratios d'efficience sur ${entrepriseText} met en lumière un gisement de profitabilité inexploité. L'étape "${q1.texte}" ("${q1.reponseDonnee}") confirme qu'une partie de votre axe "${minCat.label}" dégrade votre ratio de marge opérationnelle. L'optimisation chirurgicale de ce point est le vecteur mathématique le plus court vers une rentabilité supérieure.`;
+          risqueDetail = `Sur un CA de référence, ne pas capter ces ${gainPercentAffiche}% de marge dégrade mécaniquement votre capacité de levier financier. Le coût d'opportunité sur "${q2.texte}" est le principal frein à l'amélioration de votre EBITDA. Sans standardisation, votre rentabilité sur "${maxCat.label}" ne pourra plus supporter les inefficacités structurelles de "${minCat.label}".`;
+          solutionDetail = `Optimisation par le calcul. 1. Mise en place d'un protocole de validation strict sur "${q1.texte}". 2. Réduction de la variance opérationnelle sur "${q2.texte}". 3. Monitorage de la contribution nette sur "${q3.texte}". La méthode Print Profit System transforme chaque friction en profit.`;
+          texteInterpretation = `Ratio d'efficience : <strong>${gainsPossiblesLabel}</strong>. Le levier sur <strong>${minCat.label}</strong> est votre principal vecteur de profitabilité réelle.`;
+          break;
+
+      case 'MENTOR':
+          constatDetail = `Vous avez une équipe dévouée, mais votre système actuel travaille contre eux. En laissant "${q1.reponseDonnee}" sur "${q1.texte}", vous imposez une charge de rattrapage inutile qui sature votre axe "${minCat.label}". Libérer ces ${gainPercentAffiche}% de marge, c'est d'abord libérer le potentiel humain de ${entrepriseText} en simplifiant leur quotidien opérationnel.`;
+          risqueDetail = `La fatigue des équipes sur "${q2.texte}" est le signal faible d'une structure qui s'épuise. Ignorer ce gain de rentabilité, c'est accepter que votre talent s'érode. Un cadre flou est un cadre coûteux : à la fois pour votre sérénité de dirigeant et pour le compte de résultat de l'entreprise. Votre équipe mérite un système qui les rend fiers et rentables.`;
+          solutionDetail = `Instaurez une culture de la réussite. 1. Co-création d'un standard robuste sur "${q1.texte}" avec vos piliers. 2. Simplification drastique des flux sur "${q2.texte}". 3. Responsabilisation et fierté retrouvée sur "${q3.texte}". La rentabilité durable naît de la clarté des processus.`;
+          texteInterpretation = `Engagement et Profit : <strong>${gainsPossiblesLabel}</strong>. La sérénité de l'équipe sur <strong>${minCat.label}</strong> est le moteur de votre rentabilité récupérée.`;
+          break;
   }
 
-  const solutionDetail = `Pour désamorcer définitivement l'alerte sur "${minCat.label}", voici votre plan d'action d'hyper-croissance issu directement du Print Profit System :${etapesSolution}`;
-
-  // On stocke l'interprétation pour le webhook et le PDF
+  // Stockage définitif et certifié pour le Webhook
   EtatApp.analyseGenerale = {
       constat: constatDetail,
       risque: risqueDetail,
-      solution: solutionDetail
+      solution: solutionDetail,
+      gains_possibles: gainsPossiblesLabel, // La chaîne formatée '+ X% de marge nette'
+      synthese: texteInterpretation.replace(/<strong>|<\/strong>/g, '').replace(/\n\n/g, ' ') // Le texte épuré
   };
-  EtatApp.texteInterpretationBrut = texteInterpretation.replace(/<strong>|<\/strong>/g, '');
 
-  // Déclencher l'envoi webhook avec la nouvelle donnée
+  // Log de débogage pour certification (Visible dans la console F12)
+  console.log("== [CERTIFICATION] Préparation des données Webhook ==");
+  console.log("Clé 'gains_possibles':", EtatApp.analyseGenerale.gains_possibles);
+  console.log("Clé 'synthese':", EtatApp.analyseGenerale.synthese);
+
+  // Déclencher l'envoi webhook
   envoyerVersWebhook();
 
   const htmlContenu = `
       ${getHeaderBar()}
       <div class="glass-panel animate-next">
-          ${genererLogoSVG()}
+          <div style="text-align: center; margin-bottom: 1rem;">
+             <span style="background: var(--gold); color: #000; padding: 0.2rem 0.8rem; border-radius: 20px; font-size: 0.75rem; font-weight: 800; text-transform: uppercase;">Diagnostic : Ton ${tonChoisi}</span>
+          </div>
           <h2 style="text-align: center; margin-bottom: 2rem; color: var(--text-main);">Rapport d'Audit</h2>
           
           <div style="display: flex; flex-wrap: wrap; gap: 2rem; justify-content: center; align-items: center; margin-bottom: 2.5rem;">
@@ -894,25 +1000,30 @@ function afficherResultats() {
               </div>
           </div>
           
-          <div class="result-interpretation" style="margin-bottom: 3rem;">
-              ${texteInterpretation.replace(/\n\n/g, '<br/><br/>')}
+          <div class="result-interpretation" style="margin-bottom: 3.5rem; text-align: left; background: rgba(255,255,255,0.03); padding: 2rem; border-radius: 12px; border: 1px solid rgba(223, 185, 115, 0.1);">
+              <div style="color: var(--gold); font-weight: 800; text-transform: uppercase; font-size: 0.85rem; letter-spacing: 2px; margin-bottom: 1rem; border-bottom: 1px solid rgba(223, 185, 115, 0.2); padding-bottom: 0.5rem; display: inline-block;">Synthèse Stratégique</div>
+              <div style="line-height: 1.7; font-size: 1.05rem;">
+                  ${texteInterpretation.replace(/\n\n/g, '<br/><br/>')}
+              </div>
           </div>
           
           <div style="text-align: center; margin-top: 2rem; display: flex; flex-direction: column; gap: 1.5rem; align-items: center;">
               
               <!-- Appel à l'Action Principal -->
-              <a href="#" class="btn" style="width: 100%; max-width: 480px; font-size: 1.15rem; font-weight: 800; padding: 1.25rem; box-shadow: 0 0 30px rgba(223, 185, 115, 0.4); text-align: center; justify-content: center; transform: scale(1.05); transition: transform 0.2s;">
-                  👉 Obtenir mon diagnostic détaillé (49€)
-              </a>
+              <div style="margin-bottom: 1rem;">
+                  <a href="#" class="btn" style="width: 100%; max-width: 480px; font-size: 1.15rem; font-weight: 800; padding: 1.25rem; box-shadow: 0 0 30px rgba(223, 185, 115, 0.4); text-align: center; justify-content: center; transform: scale(1.05); transition: transform 0.2s;">
+                      👉 Obtenir mon diagnostic complet (49€)
+                  </a>
+                  <p style="color: var(--gold-light); font-size: 0.8rem; margin-top: 0.75rem; font-style: italic;">Inclus : Constat chirurgical, Projection des risques & Plan d'action détaillé.</p>
+              </div>
 
               <div style="width: 100%; max-width: 480px; height: 1px; background: rgba(255,255,255,0.1); margin: 1rem 0;"></div>
 
-              <p style="color: var(--text-muted); font-size: 0.95rem; margin-bottom: 0;">Conservez votre bilan détaillé :</p>
+              <p style="color: var(--text-muted); font-size: 0.95rem; margin-bottom: 0;">Recevoir mon bilan par e-mail :</p>
               <div style="display: flex; gap: 1rem; width: 100%; max-width: 450px;">
-                  <button class="btn btn-secondary" style="flex: 1; padding: 0.85rem 1rem; font-size: 0.95rem;" onclick="telechargerRapport()">📥 Télécharger</button>
-                  <button id="btnEmail" class="btn btn-secondary" style="flex: 1; padding: 0.85rem 1rem; font-size: 0.95rem;" onclick="envoyerRapportEmail()">✉️ Par e-mail</button>
+                  <button id="btnEmail" class="btn" style="flex: 1; padding: 0.85rem 1rem; font-size: 0.95rem;" onclick="envoyerRapportEmail()">✉️ Envoyer l'audit par mail</button>
               </div>
-              <button class="btn" style="width: 100%; max-width: 450px; margin-top: 1rem;" onclick="location.reload()">Réaliser un nouvel audit</button>
+              <button class="btn btn-secondary" style="width: 100%; max-width: 450px; margin-top: 1rem; opacity: 0.6;" onclick="location.reload()">Réaliser un nouvel audit</button>
           </div>
       </div>
   `;
@@ -1024,6 +1135,9 @@ function envoyerRapportEmail() {
   btn.innerHTML = "⏳ Envoi...";
   btn.disabled = true;
 
+  // Déclencher le webhook Make spécifiquement pour l'envoi d'email
+  envoyerVersWebhook('audit_results_email');
+
   // Simulation asynchrone d'envoi de l'e-mail
   setTimeout(() => {
       btn.innerHTML = "✅ Envoyé !";
@@ -1031,8 +1145,103 @@ function envoyerRapportEmail() {
       btn.style.borderColor = "#4ade80";
       btn.style.background = "rgba(74, 222, 128, 0.1)";
       alert("Votre rapport détaillé a été envoyé avec succès à : " + emailDest + " !");
-  }, 1200);
+    }, 1200);
 }
+
+/* ==========================================================================
+   SUPPORT CLIENT & WEBHOOK EXPERT
+   ========================================================================== */
+
+function setupSupportUI() {
+    const supportHTML = `
+        <div class="support-floating-btn" onclick="toggleSupportModal(true)">
+            <span>💬 Besoin d'aide ?</span>
+        </div>
+
+        <div id="supportOverlay" class="support-overlay">
+            <div class="support-modal">
+                <span class="support-close" onclick="toggleSupportModal(false)">&times;</span>
+                <h3>Contactez le support PPS</h3>
+                <form id="supportForm" class="support-form" onsubmit="envoyerSupport(event)">
+                    <div class="form-group">
+                        <label>Type de demande</label>
+                        <select id="supportType" class="form-control" required>
+                            <option value="" disabled selected>Choisir une option...</option>
+                            <option value="bug">Signaler un bug</option>
+                            <option value="avis">Donner un avis</option>
+                            <option value="technique">Question technique</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label>Votre message</label>
+                        <textarea id="supportMessage" class="form-control" placeholder="Comment pouvons-nous vous aider ?" required></textarea>
+                    </div>
+                    <button type="submit" class="btn" style="width: 100%;">Envoyer mon message</button>
+                </form>
+            </div>
+        </div>
+
+        <div id="supportNotif" class="support-notification">
+            Merci ! Votre message nous a bien été transmis. Réponse sous 24h.
+        </div>
+    `;
+    document.body.insertAdjacentHTML('beforeend', supportHTML);
+}
+
+function toggleSupportModal(show) {
+    const overlay = document.getElementById('supportOverlay');
+    overlay.style.display = show ? 'flex' : 'none';
+    if (show) {
+        document.getElementById('supportType').focus();
+    }
+}
+
+async function envoyerSupport(event) {
+    event.preventDefault();
+    const btn = event.target.querySelector('button');
+    const type = document.getElementById('supportType').value;
+    const message = document.getElementById('supportMessage').value;
+
+    btn.disabled = true;
+    btn.innerHTML = "⏳ Envoi en cours...";
+
+    const chargeUtile = {
+        type_demande: type,
+        message: message,
+        email: EtatApp.utilisateur || "Non connecté",
+        prenom: EtatApp.utilisateurPrenom || "Anonyme",
+        entreprise: EtatApp.utilisateurEntreprise || "Non renseigné",
+        horodatage: new Date().toISOString()
+    };
+
+    try {
+        const response = await fetch('https://hook.eu2.make.com/r1xi4qgmxc4xtygt5g2up6hsvyu8nrs5', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(chargeUtile)
+        });
+
+        if (response.ok) {
+            toggleSupportModal(false);
+            event.target.reset();
+            
+            // Notification de succès
+            const notif = document.getElementById('supportNotif');
+            notif.classList.add('active');
+            setTimeout(() => {
+                notif.classList.remove('active');
+            }, 4000);
+        } else {
+            throw new Error("Erreur serveur");
+        }
+    } catch (error) {
+        alert("Erreur lors de l'envoi. Veuillez réessayer ou contacter support@printprofitsystem.fr");
+    } finally {
+        btn.disabled = false;
+        btn.innerHTML = "Envoyer mon message";
+    }
+}
+
 
 // Initialisation de l'application
 document.addEventListener('DOMContentLoaded', () => {
@@ -1041,5 +1250,6 @@ document.addEventListener('DOMContentLoaded', () => {
     } else {
         EtatApp.indiceQuestionActuelle = -2; // Login
     }
+    setupSupportUI(); // Initialiser l'aide
     afficherQuestion();
 });
