@@ -884,6 +884,9 @@ function envoyerVersWebhook(actionType = 'audit_results') {
       chargeUtile.constat = EtatApp.analyseGenerale?.constat || "";
       chargeUtile.risque = EtatApp.analyseGenerale?.risque || "";
       chargeUtile.solution = EtatApp.analyseGenerale?.solution || "";
+      chargeUtile.constat_ia = EtatApp.analyseGenerale?.constat || "";
+      chargeUtile.risque_ia = EtatApp.analyseGenerale?.risque || "";
+      chargeUtile.solution_ia = EtatApp.analyseGenerale?.solution || "";
       chargeUtile.gains_possibles = EtatApp.analyseGenerale?.gains_possibles || "+ 0% de marge";
       chargeUtile.synthese = EtatApp.analyseGenerale?.synthese || "";
       chargeUtile.synthese_strategique = EtatApp.analyseGenerale?.synthese_strategique || "";
@@ -1016,8 +1019,8 @@ function afficherResultats() {
               
               <!-- Appel à l'Action Principal -->
               <div style="margin-bottom: 1rem;">
-                  <a href="#" class="btn" style="width: 100%; max-width: 480px; font-size: 1.15rem; font-weight: 800; padding: 1.25rem; box-shadow: 0 0 30px rgba(223, 185, 115, 0.4); text-align: center; justify-content: center; transform: scale(1.05); transition: transform 0.2s;">
-                      👉 Obtenir mon diagnostic complet (49€)
+                  <a href="https://shinkeo.systeme.io/614e81e7" class="btn" style="width: 100%; max-width: 480px; font-size: 1.15rem; font-weight: 800; padding: 1.25rem; box-shadow: 0 0 30px rgba(223, 185, 115, 0.4); text-align: center; justify-content: center; transform: scale(1.05); transition: transform 0.2s;">
+                      Recevoir mon diagnostic stratégique pour 49€
                   </a>
                   <p style="color: var(--gold-light); font-size: 0.8rem; margin-top: 0.75rem; font-style: italic;">Inclus : Constat chirurgical, Projection des risques & Plan d'action détaillé.</p>
               </div>
