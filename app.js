@@ -261,6 +261,7 @@ const EtatApp = {
   directionAnimation: 'animate-next', // Pour l'animation d'entrée
   
   scoresParCategorie: [],
+  analyseGenerale: null,
   
   // Sauvegarder la réponse
   definirReponse(identifiant, valeur) {
@@ -885,6 +886,7 @@ function envoyerVersWebhook(actionType = 'audit_results') {
       chargeUtile.solution = EtatApp.analyseGenerale?.solution || "";
       chargeUtile.gains_possibles = EtatApp.analyseGenerale?.gains_possibles || "+ 0% de marge";
       chargeUtile.synthese = EtatApp.analyseGenerale?.synthese || "";
+      chargeUtile.synthese_strategique = EtatApp.analyseGenerale?.synthese_strategique || "";
   }
   
   console.log("== Données prêtes pour le Webhook ==", chargeUtile);
@@ -977,19 +979,10 @@ function afficherResultats() {
       constat: constatDetail,
       risque: risqueDetail,
       solution: solutionDetail,
-      gains_possibles: gainsPossiblesLabel, // La chaîne formatée '+ X% de marge nette'
-      synthese: texteInterpretation.replace(/<strong>|<\/strong>/g, '').replace(/\n\n/g, ' ') // Le texte épuré
+      gains_possibles: gainsPossiblesLabel,
+      synthese: texteInterpretation.replace(/<\/?[^>]+(>|$)/g, "").replace(/\n\n/g, ' '),
+      synthese_strategique: texteInterpretation.replace(/<\/?[^>]+(>|$)/g, "") // Extraction propre sans balises
   };
-
-  // Log de débogage pour certification (Visible dans la console F12)
-  console.log("== [CERTIFICATION] Préparation des données Webhook ==");
-  console.log("Clé 'gains_possibles':", EtatApp.analyseGenerale.gains_possibles);
-  console.log("Clé 'synthese':", EtatApp.analyseGenerale.synthese);
-
-  // Déclencher l'envoi webhook uniquement si le score est bien calculé
-  if (score !== null && typeof score !== 'undefined') {
-      envoyerVersWebhook();
-  }
 
   const htmlContenu = `
       ${getHeaderBar()}
@@ -1014,7 +1007,7 @@ function afficherResultats() {
           
           <div class="result-interpretation" style="margin-bottom: 3.5rem; text-align: left; background: rgba(255,255,255,0.03); padding: 2rem; border-radius: 12px; border: 1px solid rgba(223, 185, 115, 0.1);">
               <div style="color: var(--gold); font-weight: 800; text-transform: uppercase; font-size: 0.85rem; letter-spacing: 2px; margin-bottom: 1rem; border-bottom: 1px solid rgba(223, 185, 115, 0.2); padding-bottom: 0.5rem; display: inline-block;">Synthèse Stratégique</div>
-              <div style="line-height: 1.7; font-size: 1.05rem;">
+              <div id="syntheseTexteContainer" style="line-height: 1.7; font-size: 1.05rem;">
                   ${texteInterpretation.replace(/\n\n/g, '<br/><br/>')}
               </div>
           </div>
@@ -1041,6 +1034,16 @@ function afficherResultats() {
       </div>
   `;
   conteneurApplication.innerHTML = htmlContenu;
+
+  // Déclencher l'envoi webhook uniquement si le score est bien calculé
+  if (score !== null && typeof score !== 'undefined') {
+      // On s'assure que le texte de la synthèse est bien capturé depuis l'élément DOM créé
+      const elementSynthese = document.getElementById('syntheseTexteContainer');
+      if (elementSynthese) {
+          EtatApp.analyseGenerale.synthese_strategique = elementSynthese.innerText.trim();
+      }
+      envoyerVersWebhook();
+  }
 
   // Initialisation du graphique en étoile (Radar Chart)
   setTimeout(() => {
