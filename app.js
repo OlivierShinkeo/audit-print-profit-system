@@ -1019,7 +1019,7 @@ function afficherResultats() {
               
               <!-- Appel à l'Action Principal -->
               <div style="margin-bottom: 1rem;">
-                  <a href="https://shinkeo.systeme.io/614e81e7" class="btn" style="width: 100%; max-width: 480px; font-size: 1.15rem; font-weight: 800; padding: 1.25rem; box-shadow: 0 0 30px rgba(223, 185, 115, 0.4); text-align: center; justify-content: center; transform: scale(1.05); transition: transform 0.2s;">
+                  <a href="https://shinkeo.systeme.io/614e81e7" class="btn" target="_blank" style="width: 100%; max-width: 480px; font-size: 1.15rem; font-weight: 800; padding: 1.25rem; box-shadow: 0 0 30px rgba(223, 185, 115, 0.4); text-align: center; justify-content: center; transform: scale(1.05); transition: transform 0.2s; text-decoration: none;">
                       Recevoir mon diagnostic stratégique pour 49€
                   </a>
                   <p style="color: var(--gold-light); font-size: 0.8rem; margin-top: 0.75rem; font-style: italic;">Inclus : Constat chirurgical, Projection des risques & Plan d'action détaillé.</p>
