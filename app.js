@@ -255,6 +255,7 @@ const EtatApp = {
   reponsesUtilisateur: {},     // Stocke identifiant_question -> valeur (1 à 4)
   utilisateur: null,           // Stocke l'adresse email de l'utilisateur connecté
   utilisateurPrenom: null,     // Stocke le prénom pour personnalisation
+  utilisateurNom: null,        // Stocke le nom de famille
   utilisateurEntreprise: null, // Stocke l'entreprise de l'utilisateur
   scoreTotal: 0,
   directionAnimation: 'animate-next', // Pour l'animation d'entrée
@@ -301,9 +302,9 @@ function obtenirUtilisateurs() {
     return {};
 }
 
-function enregistrerUtilisateur(email, prenom, entreprise, password) {
+function enregistrerUtilisateur(email, prenom, nom, entreprise, password) {
     const users = obtenirUtilisateurs();
-    users[email] = { prenom, entreprise, password };
+    users[email] = { prenom, nom, entreprise, password };
     localStorage.setItem('printProfitUsers', JSON.stringify(users));
 }
 
@@ -313,8 +314,8 @@ function authentifierUtilisateur(email, password) {
     if (users[email].password !== password) return "invalid_password";
     return users[email];
 }
-function sauvegarderSession(email, prenom, entreprise) {
-    const data = { email, prenom, entreprise, expires: new Date().getTime() + (7 * 24 * 60 * 60 * 1000) };
+function sauvegarderSession(email, prenom, nom, entreprise) {
+    const data = { email, prenom, nom, entreprise, expires: new Date().getTime() + (7 * 24 * 60 * 60 * 1000) };
     localStorage.setItem('printProfitSession', JSON.stringify(data));
 }
 
@@ -326,6 +327,7 @@ function chargerSession() {
             if (new Date().getTime() < data.expires) {
                 EtatApp.utilisateur = data.email;
                 EtatApp.utilisateurPrenom = data.prenom || data.email.split('@')[0];
+                EtatApp.utilisateurNom = data.nom || "";
                 EtatApp.utilisateurEntreprise = data.entreprise || "Non renseigné";
                 return true;
             } else {
@@ -340,6 +342,7 @@ function deconnecterUtilisateur() {
     localStorage.removeItem('printProfitSession');
     EtatApp.utilisateur = null;
     EtatApp.utilisateurPrenom = null;
+    EtatApp.utilisateurNom = null;
     transitionVers(() => {
         EtatApp.indiceQuestionActuelle = -2;
         EtatApp.directionAnimation = 'animate-prev';
@@ -471,9 +474,13 @@ function afficherInscription() {
           
 
           <form id="registerForm" onsubmit="traiterInscription(event)">
-              <div class="form-group">
+               <div class="form-group">
                   <label for="reg-prenom">Votre Prénom</label>
                   <input type="text" id="reg-prenom" class="form-control" placeholder="Jean" required>
+              </div>
+              <div class="form-group">
+                  <label for="reg-nom">Votre Nom</label>
+                  <input type="text" id="reg-nom" class="form-control" placeholder="Dupont" required>
               </div>
               <div class="form-group">
                   <label for="reg-name">Nom de l'entreprise</label>
@@ -563,10 +570,11 @@ function traiterInscription(event) {
   event.preventDefault();
   const email = document.getElementById('reg-email').value.trim();
   const prenom = document.getElementById('reg-prenom').value.trim();
+  const nom = document.getElementById('reg-nom').value.trim();
   const entreprise = document.getElementById('reg-name').value.trim();
   const password = document.getElementById('reg-password').value;
   
-  if (!email || !prenom || !entreprise || !password) {
+  if (!email || !prenom || !nom || !entreprise || !password) {
       alert("Veuillez remplir tous les champs obligatoires.");
       return;
   }
@@ -578,15 +586,15 @@ function traiterInscription(event) {
   }
   
   // Enregistrement sécurisé
-  enregistrerUtilisateur(email, prenom, entreprise, password);
+  enregistrerUtilisateur(email, prenom, nom, entreprise, password);
 
   EtatApp.utilisateur = email;
   EtatApp.utilisateurPrenom = prenom;
+  EtatApp.utilisateurNom = nom;
   EtatApp.utilisateurEntreprise = entreprise;
-  sauvegarderSession(email, prenom, entreprise);
+  sauvegarderSession(email, prenom, nom, entreprise);
   
-  // Déclencher le webhook pour envoyer l'email de confirmation
-  envoyerVersWebhook('registration');
+  // Plus d'envoi automatique à l'inscription pour éviter les doublons au début
   
   transitionVers(() => {
       EtatApp.indiceQuestionActuelle = -1;
@@ -623,8 +631,9 @@ function traiterLogin(event) {
   // Connexion de la session
   EtatApp.utilisateur = email;
   EtatApp.utilisateurPrenom = authResult.prenom;
+  EtatApp.utilisateurNom = authResult.nom || "";
   EtatApp.utilisateurEntreprise = authResult.entreprise;
-  sauvegarderSession(email, authResult.prenom, authResult.entreprise);
+  sauvegarderSession(email, authResult.prenom, authResult.nom || "", authResult.entreprise);
   
   transitionVers(() => {
       EtatApp.indiceQuestionActuelle = -1;
@@ -863,6 +872,7 @@ function envoyerVersWebhook(actionType = 'audit_results') {
   const chargeUtile = {
       action: actionType,
       prenom: EtatApp.utilisateurPrenom,
+      nom: EtatApp.utilisateurNom,
       email: EtatApp.utilisateur,
       entreprise: EtatApp.utilisateurEntreprise || "Non renseigné",
       horodatage: new Date().toISOString()
@@ -976,8 +986,10 @@ function afficherResultats() {
   console.log("Clé 'gains_possibles':", EtatApp.analyseGenerale.gains_possibles);
   console.log("Clé 'synthese':", EtatApp.analyseGenerale.synthese);
 
-  // Déclencher l'envoi webhook (Désactivé pour éviter les doublons - se fait au clic sur 'Recevoir par mail')
-  // envoyerVersWebhook();
+  // Déclencher l'envoi webhook uniquement si le score est bien calculé
+  if (score !== null && typeof score !== 'undefined') {
+      envoyerVersWebhook();
+  }
 
   const htmlContenu = `
       ${getHeaderBar()}
@@ -1019,10 +1031,11 @@ function afficherResultats() {
 
               <div style="width: 100%; max-width: 480px; height: 1px; background: rgba(255,255,255,0.1); margin: 1rem 0;"></div>
 
-              <p style="color: var(--text-muted); font-size: 0.95rem; margin-bottom: 0;">Recevoir mon bilan par e-mail :</p>
-              <div style="display: flex; gap: 1rem; width: 100%; max-width: 450px;">
-                  <button id="btnEmail" class="btn" style="flex: 1; padding: 0.85rem 1rem; font-size: 0.95rem;" onclick="envoyerRapportEmail()">✉️ Envoyer l'audit par mail</button>
+              <div style="background: rgba(74, 222, 128, 0.1); border: 1px solid rgba(74, 222, 128, 0.2); padding: 1.5rem; border-radius: 12px; max-width: 480px; text-align: center;">
+                  <p style="color: #4ade80; font-weight: 700; margin-bottom: 0.5rem; font-size: 1.1rem;">✨ Félicitations !</p>
+                  <p style="color: var(--text-main); font-size: 0.95rem; line-height: 1.5; margin: 0;">Votre bilan vient de vous être envoyé par e-mail<br/><span style="color: var(--text-muted); font-size: 0.85rem;">(Pensez à vérifier vos spams !)</span></p>
               </div>
+
               <button class="btn btn-secondary" style="width: 100%; max-width: 450px; margin-top: 1rem; opacity: 0.6;" onclick="location.reload()">Réaliser un nouvel audit</button>
           </div>
       </div>
@@ -1128,25 +1141,6 @@ function telechargerRapport() {
   URL.revokeObjectURL(url);
 }
 
-function envoyerRapportEmail() {
-  const btn = document.getElementById('btnEmail');
-  const emailDest = EtatApp.utilisateur || "votre adresse";
-  
-  btn.innerHTML = "⏳ Envoi...";
-  btn.disabled = true;
-
-  // Déclencher le webhook Make spécifiquement pour l'envoi d'email
-  envoyerVersWebhook('audit_results_email');
-
-  // Simulation asynchrone d'envoi de l'e-mail
-  setTimeout(() => {
-      btn.innerHTML = "✅ Envoyé !";
-      btn.style.color = "var(--text-main)";
-      btn.style.borderColor = "#4ade80";
-      btn.style.background = "rgba(74, 222, 128, 0.1)";
-      alert("Votre rapport détaillé a été envoyé avec succès à : " + emailDest + " !");
-    }, 1200);
-}
 
 /* ==========================================================================
    SUPPORT CLIENT & WEBHOOK EXPERT
