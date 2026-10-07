@@ -1020,7 +1020,7 @@ function afficherResultats() {
               <!-- Appel à l'Action Principal -->
               <div style="margin-bottom: 1rem;">
                   <a href="https://calendly.com/printprofitsystem/appel-de-candidature-print-profit-system" rel="noopener" class="btn" target="_blank" style="width: 100%; max-width: 480px; font-size: 1.15rem; font-weight: 800; padding: 1.25rem; box-shadow: 0 0 30px rgba(223, 185, 115, 0.4); text-align: center; justify-content: center; transform: scale(1.05); transition: transform 0.2s; text-decoration: none;">
-                      Je réserve mon appel 30 minutes
+                      Je réserve mon appel de 30 minutes
                   </a>
               </div>
 
